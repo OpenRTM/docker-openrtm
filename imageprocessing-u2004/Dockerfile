@@ -91,13 +91,18 @@ RUN git clone https://github.com/OpenRTM/ImageProcessing \
 
 WORKDIR /tmp/ip/build
 RUN ./build_linux_package.sh
+RUN mkdir ../deb-pkg \
+  && cp *.deb ../deb-pkg
 
 ##### install ImageProcessing
 
 FROM ubuntu:20.04 as imageprocessing-install
 
 COPY --from=opencv-build /tmp/opencv/install /usr/local/
-COPY --from=imageprocessing-build /tmp/ip/build/imageprocessing_2.0.0_amd64.deb /root
+COPY --from=imageprocessing-build /tmp/ip/deb-pkg/ /root
+
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update \
   && apt-get install -y wget \
@@ -108,10 +113,21 @@ RUN apt-get update \
   && apt-get install -y omniidl \
   omniidl-python3 \
   openrtm2-dev \  
-  sudo 
+  sudo \
+  libopenexr-dev \
+  libdc1394-22 \
+  libgstreamer1.0-dev \
+  libgstreamer-plugins-base1.0-dev \
+  libavcodec-extra58 \
+  libavformat-dev \
+  libswscale-dev \
+  v4l-utils \
+  qv4l2 \
+  tzdata
 
 WORKDIR /root
-RUN dpkg -i imageprocessing_2.0.0_amd64.deb \
+RUN debname=$(ls) \
+  && dpkg -i ${debname} \
   && apt clean \
   && rm -rf /var/lib/apt/lists/*
 
